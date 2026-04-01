@@ -1,0 +1,41 @@
+CREATE DATABASE IF NOT EXISTS techwatch_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE techwatch_db;
+
+CREATE TABLE IF NOT EXISTS source (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    url VARCHAR(500) NOT NULL UNIQUE,
+    category VARCHAR(100) NULL,
+    active BOOLEAN DEFAULT TRUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS article (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    source_id INT NOT NULL,
+    title VARCHAR(500) NOT NULL,
+    url VARCHAR(700) NOT NULL UNIQUE,
+    content LONGTEXT,
+    published_at DATETIME NULL,
+    summary TEXT,
+    ai_category VARCHAR(100),
+    trend_score INT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (source_id) REFERENCES source(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS daily_report (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    report_date DATE NOT NULL UNIQUE,
+    articles_count INT DEFAULT 0,
+    html_content LONGTEXT,
+    text_content LONGTEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS email_setting (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    recipient_email VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="section-card">
+  <div class="section-header">
+    <div>
+      <h4>Add New Source</h4>
+      <p>Register a technology website to monitor automatically.</p>
+    </div>
+  </div>
+
+  <form method="POST" class="styled-form">
+    <div class="row">
+      <div class="col-md-4 mb-3">
+        <label class="form-label">Source Name</label>
+        <input
+          type="text"
+          name="name"
+          class="form-control modern-input"
+          placeholder="Enter source name"
+          required
+        >
+      </div>
+
+      <div class="col-md-5 mb-3">
+        <label class="form-label">Website URL</label>
+        <input
+          type="url"
+          name="url"
+          class="form-control modern-input"
+          placeholder="Enter website URL"
+          required
+        >
+      </div>
+
+      <div class="col-md-3 mb-3">
+        <label class="form-label">Category</label>
+        <input
+          type="text"
+          name="category"
+          class="form-control modern-input"
+          placeholder="Enter category"
+        >
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-gradient">Add Source</button>
+  </form>
+</div>
+
+<div class="section-card mt-4">
+  <div class="section-header">
+    <div>
+      <h4>All Sources</h4>
+      <p>Manage registered websites and launch scraping manually.</p>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table custom-table align-middle">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>URL</th>
+          <th>Category</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for source in sources %}
+        <tr>
+          <td>{{ source.name }}</td>
+          <td>
+            <a class="article-link" href="{{ source.url }}" target="_blank">{{ source.url }}</a>
+          </td>
+          <td>
+            {% if source.category %}
+              <span class="category-badge">{{ source.category }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="action-group">
+              <form method="POST" action="{{ url_for('main.scrape_source', source_id=source.id) }}">
+                <button type="submit" class="btn btn-sm btn-success-soft">Scrape Now</button>
+              </form>
+
+              <form method="POST" action="{{ url_for('main.delete_source', source_id=source.id) }}">
+                <button type="submit" class="btn btn-sm btn-danger-soft">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="empty-state">No sources added yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

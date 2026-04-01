@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="section-card">
+  <div class="section-header">
+    <div>
+      <h4>Analyzed Articles</h4>
+      <p>Technology content collected, summarized and classified automatically.</p>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table custom-table align-middle">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Source</th>
+          <th>Category</th>
+          <th>Summary</th>
+          <th>Trend</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for article in articles %}
+        <tr>
+          <td>
+            <a class="article-link fw-semibold" href="{{ article.url }}" target="_blank">
+              {{ article.title }}
+            </a>
+          </td>
+          <td>{{ article.source.name }}</td>
+          <td>
+            <span class="category-badge">{{ article.ai_category or 'N/A' }}</span>
+          </td>
+          <td class="summary-cell">{{ article.summary or 'No summary available' }}</td>
+          <td>
+            <span class="score-pill">{{ article.trend_score }}</span>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="empty-state">No analyzed articles found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
