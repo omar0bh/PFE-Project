@@ -46,18 +46,31 @@
   </div>
 </div>
 
-<div class="section-card mb-4">
-  <div class="section-header">
-    <div>
-      <h4>Digest email</h4>
-      <p>
-        {% if current_email %}
-          Digests are sent to <strong>{{ current_email }}</strong>.
-        {% else %}
-          No recipient configured yet.
-        {% endif %}
-        Manage this on <a class="article-link" href="{{ url_for('main.email_settings') }}">Email Settings</a>.
-      </p>
+<div class="grid-2">
+  <div class="section-card mb-4" style="flex:1;">
+    <div class="section-header">
+      <div>
+        <h4>Digest email</h4>
+        <p>
+          {% if current_email %}
+            Digests are sent to <strong>{{ current_email }}</strong>.
+          {% else %}
+            No recipient configured yet.
+          {% endif %}
+          Manage this on <a class="article-link" href="{{ url_for('main.email_settings') }}">Email Settings</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card mb-4" style="flex:0.7; display:flex; flex-direction:column; align-items:center;">
+    <div class="section-header" style="width: 100%;">
+      <div>
+        <h4>Articles Data</h4>
+      </div>
+    </div>
+    <div style="position: relative; height: 160px; width: 100%;">
+      <canvas id="categoryChart"></canvas>
     </div>
   </div>
 </div>
@@ -102,4 +115,47 @@
   </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const labels = {{ chart_labels | tojson }};
+  const data = {{ chart_values | tojson }};
+  
+  if (labels.length > 0) {
+    const ctx = document.getElementById('categoryChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: [
+            'rgb(99, 102, 241)',
+            'rgb(34, 211, 238)',
+            'rgb(139, 92, 246)',
+            'rgb(16, 185, 129)',
+            'rgb(239, 68, 68)',
+            'rgb(245, 158, 11)'
+          ],
+          borderWidth: 0,
+          hoverOffset: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              color: 'rgba(255, 255, 255, 0.8)'
+            }
+          }
+        }
+      }
+    });
+  }
+</script>
 {% endblock %}

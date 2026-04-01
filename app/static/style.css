@@ -360,6 +360,14 @@ canvas {
   border-spacing: 0;
 }
 
+.custom-table, 
+.custom-table tr, 
+.custom-table td, 
+.custom-table th {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
 .custom-table thead th {
   background: rgba(255, 255, 255, 0.05);
   border: none;

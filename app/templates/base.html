@@ -40,13 +40,6 @@
         </nav>
       </div>
 
-      <div class="sidebar-footer">
-        <div class="mini-card">
-          <p class="mini-label">Project</p>
-          <h6>Veille technologique intelligente</h6>
-          <small>Scraping + IA + n8n</small>
-        </div>
-      </div>
     </aside>
 
     <main class="main-content">
@@ -70,19 +63,37 @@
       </header>
 
       <section class="content-area">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert custom-alert alert-{{ category if category != 'message' else 'info' }}">
-                {{ message }}
-              </div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
-
         {% block content %}{% endblock %}
       </section>
     </main>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    const Toast = Swal.mixin({
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 3500,
+      timerProgressBar: true,
+      didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer)
+        toast.addEventListener('mouseleave', Swal.resumeTimer)
+      }
+    });
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          Toast.fire({
+            icon: '{{ "success" if category == "success" else "error" if category == "danger" else "info" }}',
+            title: '{{ message }}'
+          });
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </script>
+
+  {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -47,12 +47,20 @@ def dashboard():
     recent_articles = Article.query.order_by(Article.created_at.desc()).limit(4).all()
     current_email = get_current_recipient_email()
 
+    from sqlalchemy import func
+    category_counts = db.session.query(Article.ai_category, func.count(Article.id)).group_by(Article.ai_category).all()
+    
+    chart_labels = [c[0] or 'Uncategorized' for c in category_counts] if category_counts else []
+    chart_values = [c[1] for c in category_counts] if category_counts else []
+
     return render_template(
         "dashboard.html",
         sources_count=sources_count,
         articles_count=articles_count,
         recent_articles=recent_articles,
         current_email=current_email,
+        chart_labels=chart_labels,
+        chart_values=chart_values
     )
 
 
