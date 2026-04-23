@@ -19,8 +19,12 @@ def extract_articles_from_homepage(source_url: str, limit: int = 10):
     Improved version:
     كتلقط روابط articles من بزاف ديال المواقع
     """
-    html = fetch_html(source_url)
-    soup = BeautifulSoup(html, "lxml")
+    try:
+        html = fetch_html(source_url)
+        soup = BeautifulSoup(html, "lxml")
+    except Exception as e:
+        print(f"Skipping {source_url} (fetch failed): {e}")
+        return []
 
     found = []
     seen = set()

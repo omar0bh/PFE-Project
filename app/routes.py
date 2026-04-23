@@ -40,6 +40,48 @@ def save_recipient_email(email: str):
         raise
 
 
+def serialize_article(article):
+    """Convert Article model to JSON-serializable dict."""
+    try:
+        # Ensure source is loaded
+        source_name = None
+        if article.source:
+            source_name = article.source.name
+        
+        return {
+            'id': article.id,
+            'title': article.title,
+            'url': article.url,
+            'content': article.content or '',
+            'summary': article.summary or '',
+            'ai_category': article.ai_category or 'Uncategorized',
+            'trend_score': article.trend_score or 0,
+            'source_name': source_name,
+            'source_id': article.source_id,
+            'published_at': article.published_at.isoformat() if article.published_at else None,
+            'created_at': article.created_at.isoformat() if article.created_at else None,
+        }
+    except Exception as e:
+        print(f"Error serializing article {article.id}: {e}")
+        return {}
+
+
+def serialize_source(source):
+    """Convert Source model to JSON-serializable dict."""
+    try:
+        return {
+            'id': source.id,
+            'name': source.name,
+            'url': source.url,
+            'category': source.category or 'General',
+            'active': source.active,
+            'created_at': source.created_at.isoformat() if source.created_at else None,
+        }
+    except Exception as e:
+        print(f"Error serializing source {source.id}: {e}")
+        return {}
+
+
 @main_bp.route("/")
 def dashboard():
     sources_count = Source.query.count()
@@ -139,34 +181,6 @@ def scrape_source(source_id):
     return redirect(url_for("main.sources"))
 
 
-@main_bp.route("/api/sources", methods=["GET"])
-def api_sources():
-    if not check_internal_api_key(request):
-        return jsonify({"error": "Unauthorized"}), 401
-
-    rows = Source.query.filter_by(active=True).order_by(Source.created_at.asc()).all()
-    return jsonify(
-        [
-            {
-                "id": s.id,
-                "name": s.name,
-                "url": s.url,
-                "category": s.category,
-                "active": s.active,
-            }
-            for s in rows
-        ]
-    )
-
-
-@main_bp.route("/api/email-settings", methods=["GET"])
-def api_email_settings():
-    if not check_internal_api_key(request):
-        return jsonify({"error": "Unauthorized"}), 401
-
-    email = get_current_recipient_email()
-    return jsonify({"recipient_email": email})
-
 
 @main_bp.route("/api/cron/run-daily", methods=["POST"])
 def run_daily_cron():
@@ -208,3 +222,162 @@ def run_daily_cron():
     resp = make_response(jsonify(payload))
     resp.headers["X-TechWatch-Recipient"] = target_email
     return resp
+
+
+# ============================================================================
+# NEW JSON API ENDPOINTS FOR REACT FRONTEND
+# ============================================================================
+
+@main_bp.route("/api/dashboard", methods=["GET"])
+def api_dashboard():
+    """Get dashboard data for React frontend."""
+    try:
+        sources_count = Source.query.count()
+        articles_count = Article.query.count()
+        recent_articles = Article.query.order_by(Article.created_at.desc()).limit(4).all()
+        current_email = get_current_recipient_email()
+
+        from sqlalchemy import func
+        category_counts = db.session.query(Article.ai_category, func.count(Article.id)).group_by(Article.ai_category).all()
+        
+        chart_labels = [c[0] or 'Uncategorized' for c in category_counts] if category_counts else []
+        chart_values = [c[1] for c in category_counts] if category_counts else []
+
+        return jsonify({
+            'sources_count': sources_count,
+            'articles_count': articles_count,
+            'recent_articles': [serialize_article(a) for a in recent_articles],
+            'current_email': current_email,
+            'chart_data': {
+                'labels': chart_labels,
+                'values': chart_values,
+            }
+        })
+    except Exception as e:
+        print(f"Dashboard API Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Dashboard error: {str(e)}'}), 500
+
+
+@main_bp.route("/api/sources", methods=["GET", "POST"])
+def api_sources_handler():
+    """Get all sources or add a new source."""
+    if request.method == "GET":
+        try:
+            all_sources = Source.query.order_by(Source.created_at.desc()).all()
+            serialized = [serialize_source(s) for s in all_sources]
+            return jsonify(serialized)
+        except Exception as e:
+            print(f"Sources GET Error: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': f'Sources error: {str(e)}'}), 500
+
+    elif request.method == "POST":
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'No JSON data provided'}), 400
+            
+            name = data.get('name', '').strip()
+            url = data.get('url', '').strip()
+            category = data.get('category', '').strip() or None
+
+            if not name or not url:
+                return jsonify({'error': 'Name and URL are required'}), 400
+
+            source = Source(name=name, url=url, category=category, active=True)
+            db.session.add(source)
+            db.session.commit()
+
+            return jsonify(serialize_source(source)), 201
+        except Exception as e:
+            db.session.rollback()
+            print(f"Sources POST Error: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': f'Error creating source: {str(e)}'}), 500
+
+
+@main_bp.route("/api/sources/<int:source_id>/delete", methods=["POST"])
+def api_delete_source(source_id):
+    """Delete a source."""
+    try:
+        source = Source.query.get_or_404(source_id)
+        db.session.delete(source)
+        db.session.commit()
+        return jsonify({'message': 'Source deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Delete Source Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Error deleting source: {str(e)}'}), 500
+
+
+@main_bp.route("/api/scrape/<int:source_id>", methods=["POST"])
+def api_scrape_source(source_id):
+    """Scrape articles from a source."""
+    try:
+        source = Source.query.get_or_404(source_id)
+        inserted = scrape_and_process_source(source, limit=SCRAPE_ARTICLES_PER_SOURCE)
+        db.session.commit()
+        return jsonify({
+            'message': f'{inserted} new articles added from {source.name}',
+            'inserted': inserted,
+            'source_id': source_id
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"Scrape Source Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Scraping failed: {str(e)}'}), 500
+
+
+@main_bp.route("/api/articles", methods=["GET"])
+def api_articles_handler():
+    """Get all articles."""
+    try:
+        all_articles = Article.query.order_by(Article.created_at.desc()).all()
+        serialized = [serialize_article(a) for a in all_articles]
+        return jsonify(serialized)
+    except Exception as e:
+        print(f"Articles GET Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Articles error: {str(e)}'}), 500
+
+
+@main_bp.route("/api/email-settings", methods=["GET", "POST"])
+def api_email_settings_handler():
+    """Get or save email settings."""
+    if request.method == "GET":
+        try:
+            current_email = get_current_recipient_email()
+            return jsonify({'current_email': current_email})
+        except Exception as e:
+            print(f"Email Settings GET Error: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': f'Email settings error: {str(e)}'}), 500
+
+    elif request.method == "POST":
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'No JSON data provided'}), 400
+            
+            email = data.get('email', '').strip()
+
+            if not email:
+                return jsonify({'error': 'Please enter a valid email address.'}), 400
+
+            save_recipient_email(email)
+            return jsonify({'message': 'Recipient email saved successfully', 'email': email})
+        except Exception as e:
+            print(f"Email Settings POST Error: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': f'Error saving email: {str(e)}'}), 500

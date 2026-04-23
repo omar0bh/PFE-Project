@@ -1,13 +1,14 @@
-from datetime import date
+from datetime import date, datetime, timedelta
 from app.models import Article, DailyReport
 from app.extensions import db
 
 def build_daily_digest():
     today = date.today()
+    twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
 
     articles = (
         Article.query
-        .filter(db.func.date(Article.created_at) == today)
+        .filter(Article.created_at >= twenty_four_hours_ago)
         .order_by(Article.trend_score.desc(), Article.created_at.desc())
         .all()
     )
